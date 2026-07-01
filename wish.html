@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Wish Collector</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-deep: #030313;
+            --bg-midnight: #080721;
+            --bg-purple: #130b33;
+            --c-gold: #f39c12;
+            --c-soft-gold: #f7dc6f;
+            --c-lavender: #e8daef;
+            --c-white: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --font-serif: 'Playfair Display', Georgia, serif;
+            --font-sans: 'Inter', sans-serif;
+            --font-display: 'Cinzel', serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-deep);
+            font-family: var(--font-sans);
+            color: var(--c-lavender);
+        }
+
+        #audio-prompt {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            background: rgba(8, 7, 33, 0.8);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            border: 1px solid var(--glass-border);
+            pointer-events: none;
+            opacity: 0.7;
+            transition: opacity 0.5s;
+        }
+
+        #sky-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: initial;
+        }
+
+        .sky-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            transition: all 4s ease;
+            opacity: 0;
+        }
+
+        #aurora-layer {
+            background: linear-gradient(180deg, rgba(39, 174, 96, 0) 0%, rgba(39, 174, 96, 0.08) 40%, rgba(142, 68, 173, 0.08) 70%, rgba(0,0,0,0) 100%);
+        }
+
+        #galaxy-layer {
+            background: radial-gradient(circle at 70% 30%, rgba(142, 68, 173, 0.12) 0%, rgba(41, 128, 185, 0.08) 40%, transparent 70%);
+        }
+
+        .scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 2s ease;
+        }
+
+        .scene.active {
+            opacity: 1;
+            pointer-events: initial;
+        }
+
+        #intro-scene {
+            background-color: #000;
+            z-index: 100;
+        }
+
+        #intro-story {
+            max-width: 600px;
+            width: 85%;
+            text-align: center;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .story-line {
+            font-family: var(--font-serif);
+            font-size: 1.6rem;
+            font-style: italic;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 10px rgba(255,255,255,0.2);
+            opacity: 0;
+            transition: opacity 1.5s ease;
+            position: absolute;
+        }
+
+        .story-line.highlight {
+            font-family: var(--font-display);
+            font-size: 2.8rem;
+            letter-spacing: 4px;
+            color: var(--c-soft-gold);
+            text-shadow: 0 0 20px rgba(247, 220, 111, 0.4);
+            font-style: normal;
+        }
+
+        .magic-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 14px 36px;
+            font-family: var(--font-sans);
+            color: var(--c-white);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 30px;
+            outline: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1s ease, background 0.3s ease, border 0.3s ease;
+            margin-top: 40px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.05);
+        }
+
+        .magic-btn.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .magic-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--c-white);
+            box-shadow: 0 0 25px rgba(255,255,255,0.2);
+        }
+
+        #hud {
+            position: fixed;
+            top: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s ease;
+        }
+
+        #hud.visible {
+            opacity: 1;
+        }
+
+        .hud-left {
+            font-family: var(--font-display);
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        #jar-container {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 25;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 2s ease, transform 4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        #jar-container.visible {
+            opacity: 1;
+        }
+
+        .jar-wrapper {
+            position: relative;
+            width: 90px;
+            height: 130px;
+            cursor: pointer;
+        }
+
+        .jar-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 10px rgba(232, 218, 239, 0.2));
+            transition: filter 0.5s ease;
+        }
+
+        .jar-glow-core {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 65px;
+            border-radius: 40%;
+            background: radial-gradient(circle, rgba(247,220,111,0.6) 0%, rgba(155,89,182,0.3) 50%, transparent 100%);
+            filter: blur(8px);
+            opacity: 0.2;
+            pointer-events: none;
+            transition: all 1s ease;
+        }
+
+        .jar-counter {
+            margin-top: 12px;
+            font-family: var(--font-sans);
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        #wish-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            background: rgba(3, 3, 19, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
+        }
+
+        #wish-overlay.active {
+            opacity: 1;
+            pointer-events: initial;
+        }
+
+        .wish-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 50px 40px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 520px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #wish-overlay.active .wish-card {
+            transform: scale(1) translateY(0);
+        }
+
+        .wish-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .wish-category {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--c-soft-gold);
+            margin-bottom: 24px;
+            opacity: 0.8;
+        }
+
+        .wish-text {
+            font-family: var(--font-serif);
+            font-size: 1.4rem;
+            line-height: 1.8;
+            color: #fff;
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-style: italic;
+        }
+
+        .wish-card .magic-btn {
+            margin-top: 35px;
+        }
+
+        #secret-toast {
+            position: fixed;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            padding: 24px 40px;
+            border-radius: 50px;
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 1.2rem;
+            color: var(--c-soft-gold);
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        #countdown-card {
+            background: rgba(10, 8, 36, 0.4);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            padding: 45px 35px;
+            border-radius: 28px;
+            text-align: center;
+            max-width: 480px;
+            width: 88%;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+
+        #countdown-card.reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .countdown-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            color: var(--c-white);
+            margin-bottom: 25px;
+        }
+
+        .timer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .timer-segment {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px 5px;
+            border-radius: 12px;
+        }
+
+        .timer-num {
+            font-family: var(--font-sans);
+            font-size: 1.6rem;
+            font-weight: 300;
+            color: var(--c-soft-gold);
+            display: block;
+        }
+
+        .timer-label {
+            font-family: var(--font-sans);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.5;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .countdown-subtext {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            opacity: 0.8;
+        }
+
+        .cursor-pointer { cursor: pointer; }
+        .hint-text {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 5;
+            transition: opacity 1s;
+            text-transform: uppercase;
+        }
+
+        @media(max-width: 768px) {
+            #hud { padding: 0 20px; top: 20px; }
+            #jar-container { bottom: 20px; right: 20px; }
+            .wish-card { padding: 40px 25px; }
+            .wish-text { font-size: 1.2rem; }
+            .story-line { font-size: 1.3rem; }
+            .story-line.highlight { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="audio-prompt">Interactivity enabled. Experience is optimized with ambient sound.</div>
+    <canvas id="sky-canvas"></canvas>
+    
+    <div id="aurora-layer" class="sky-overlay"></div>
+    <div id="galaxy-layer" class="sky-overlay"></div>
+
+    <div id="hud">
+        <div class="hud-left">THE WISH COLLECTOR</div>
+    </div>
+
+    <div id="jar-container">
+        <div class="jar-wrapper" id="jar-click-target">
+            <div class="jar-glow-core" id="jar-glow"></div>
+            <svg class="jar-svg" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M30 20C30 15 35 10 50 10C65 10 70 15 70 20V28H30V20Z" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="rgba(255,255,255,0.05)"/>
+                <path d="M25 28H75C80 28 85 32 85 45V105C85 125 75 130 50 130C25 130 15 125 15 105V45C15 32 20 28 25 28Z" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="rgba(255,255,255,0.02)"/>
+                <path d="M22 45C22 38 25 35 32 35H68C75 35 78 38 78 45V50C78 52 76 54 74 54H26C24 54 22 52 22 50V45Z" fill="rgba(255,255,255,0.04)"/>
+                <path d="M35 12C35 12 42 6 50 6C58 6 65 12 65 12" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+            </svg>
+        </div>
+        <div class="jar-counter" id="jar-counter-text">000 / 006</div>
+    </div>
+
+    <div id="intro-scene" class="scene active">
+        <div id="intro-story"></div>
+        <button class="magic-btn" id="intro-btn">Begin</button>
+    </div>
+
+    <div id="gameplay-scene" class="scene">
+        <div class="hint-text" id="interaction-hint">Drag anywhere to move the Magical Basket</div>
+    </div>
+
+    <div id="wish-overlay">
+        <div class="wish-card">
+            <div class="wish-category" id="card-cat">Category</div>
+            <div class="wish-text" id="card-text">Wish description aligns here...</div>
+            <button class="magic-btn" id="collect-wish-btn">Collect Wish</button>
+        </div>
+    </div>
+
+    <div id="secret-toast">Someone smiled today because you exist.</div>
+
+    <div id="final-scene" class="scene">
+        <div id="countdown-card">
+            <div class="countdown-title" id="final-card-title">Only A Few More Nights...</div>
+            <div class="timer-grid">
+                <div class="timer-segment"><span class="timer-num" id="days">00</span><span class="timer-label">Days</span></div>
+                <div class="timer-segment"><span class="timer-num" id="hours">00</span><span class="timer-label">Hours</span></div>
+                <div class="timer-segment"><span class="timer-num" id="minutes">00</span><span class="timer-label">Mins</span></div>
+                <div class="timer-segment"><span class="timer-num" id="seconds">00</span><span class="timer-label">Secs</span></div>
+            </div>
+            <div class="countdown-subtext" id="final-card-subtext">Some wishes take time.<br>The best ones are still on their way.</div>
+            <button class="magic-btn" id="release-wishes-btn" style="display:inline-block; margin-top:30px;">Release My Wishes</button>
+        </div>
+    </div>
+
+    <script>
+        // --- SOUND ARCHITECTURE ENGINE ---
+        class MagicSoundEngine {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, type, duration, vol) {
+                if (!this.ctx) return;
+                try {
+                    let osc = this.ctx.createOscillator();
+                    let gainNode = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gainNode.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, this.ctx.currentTime + duration);
+                    osc.connect(gainNode);
+                    gainNode.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            starCatch() {
+                this.init();
+                this.playTone(523.25, 'sine', 1.2, 0.15); 
+                setTimeout(() => this.playTone(659.25, 'sine', 1.0, 0.1), 80); 
+                setTimeout(() => this.playTone(783.99, 'sine', 1.4, 0.08), 160); 
+                setTimeout(() => this.playTone(1046.50, 'sine', 2.0, 0.05), 240); 
+            }
+            collectSparkle() {
+                this.init();
+                this.playTone(880, 'sine', 0.8, 0.1);
+                setTimeout(() => this.playTone(1200, 'sine', 0.6, 0.05), 50);
+            }
+            ambientChime() {
+                this.init();
+                let notes = [329.63, 392.00, 440.00, 523.25, 587.33];
+                let note = notes[Math.floor(Math.random()*notes.length)];
+                this.playTone(note, 'sine', 3.0, 0.03);
+            }
+            playEmotionalOutpour() {
+                this.init();
+                let scale = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+                scale.forEach((freq, index) => {
+                    setTimeout(() => {
+                        this.playTone(freq, 'sine', 2.5, 0.06);
+                    }, index * 200);
+                });
+            }
+        }
+        const audio = new MagicSoundEngine();
+        document.addEventListener('click', () => {
+            audio.init();
+            document.getElementById('audio-prompt').style.opacity = '0';
+        }, { once: true });
+
+        // --- PROC-GEN UNIQUE WISH SYSTEM MATRIX ---
+        const wishCategories = [
+            "Happiness", "Peace", "Hope", "Dreams", "Confidence", 
+            "Strength", "Self Love", "Friendship", "Success", "Adventure", 
+            "Beautiful Memories", "Gratitude", "Kindness", "Future", "Courage"
+        ];
+
+        function generateWishDatabase() {
+            let database = [];
+            let shortPhrases = [
+                "May your heart always feel light and at peace.", "You are worth every beautiful thing coming your way.",
+                "May you find joy in the quietest, simplest moments.", "Trust your journey; you are growing beautifully.",
+                "May your laughter always be unfiltered and real.", "You carry a quiet strength that inspires people.",
+                "May today bring a reason to smile unexpectedly.", "Be gentle with yourself; you are doing perfectly.",
+                "May the horizon ahead be filled with gentle grace.", "Your presence makes the world a softer place.",
+                "May confidence follow you into every single room.", "You are loved exactly as you stand tonight.",
+                "May your dreams find real courage to breathe.", "Tomorrow holds magnificent potential for you.",
+                "May you always look back with deep gratitude.", "You are a rare and vital medicine to this world.",
+                "May beautiful memories cushion your coldest days.", "Keep shining your quiet, beautiful light.",
+                "May you always stay true to your inner blueprint.", "The best days of your life are still unwritten."
+            ];
+
+            let index = 0;
+            while (database.length < 500) {
+                let cat = wishCategories[index % wishCategories.length];
+                let phrase1 = shortPhrases[index % shortPhrases.length];
+                let phrase2 = shortPhrases[(index + 3) % shortPhrases.length];
+                let wishText = phrase1 + " " + phrase2;
+                
+                if(index >= shortPhrases.length) {
+                    wishText += " Look forward proudly.";
+                }
+
+                database.push({
+                    id: database.length + 1,
+                    category: cat,
+                    text: wishText,
+                    type: (database.length % 40 === 0) ? 'moon' : 
+                          (database.length % 25 === 0) ? 'constellation' : 
+                          (database.length % 10 === 0) ? 'gold' : 'normal'
+                });
+                index++;
+            }
+            return database;
+        }
+
+        const WISH_DATABASE = generateWishDatabase();
+        let collectedWishIDs = new Set();
+        let currentWishContext = null;
+
+        // --- GAMEPLAY CONFIG / STATE MACHINE ---
+        let gameState = {
+            wishesCollectedCount: 0,
+            totalWishes: 500,
+            evolutionStage: 0,
+            skyActive: false,
+            phase: 'intro', 
+            navyaHeartFormed: false
+        };
+
+        // --- ENGINE CANVAS PARTICLE LAYER SYSTEM ---
+        const canvas = document.getElementById('sky-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let stars = [];
+        let shootingStars = [];
+        let particles = [];
+        let fireflies = [];
+        let constellationLines = [];
+        let globalWind = 0.05;
+
+        // --- MAGICAL BASKET CONFIGURATION ---
+        let basket = {
+            x: window.innerWidth / 2,
+            y: window.innerHeight - 60,
+            width: 130,
+            height: 25,
+            targetX: window.innerWidth / 2
+        };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            basket.y = canvas.height - 60;
+            initBackgroundStars();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function initBackgroundStars() {
+            stars = [];
+            let count = 120;
+            for(let i=0; i<count; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 1.5,
+                    opacity: Math.random(),
+                    speed: 0.005 + Math.random() * 0.015,
+                    color: '#ffffff'
+                });
+            }
+        }
+
+        class ShootingStar {
+            constructor(type = 'normal', isSpecialLoop = false) {
+                this.type = type; 
+                this.isSpecialLoop = isSpecialLoop; 
+                this.reset();
+                if(isSpecialLoop) {
+                    this.x = canvas.width / 2;
+                    this.y = canvas.height / 2;
+                    this.radiusX = 100 + Math.random()*50;
+                    this.radiusY = 60 + Math.random()*30;
+                    this.angle = Math.random() * Math.PI * 2;
+                    this.loopSpeed = 0.03;
+                }
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = -20;
+                this.targetX = Math.random() * canvas.width;
+                this.targetY = canvas.height + 50;
+                let dx = this.targetX - this.x;
+                let dy = this.targetY - this.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                this.speed = 1.2 + Math.random() * 1.8; 
+                if(this.type === 'gold') this.speed *= 1.2;
+                if(this.type === 'moon') this.speed *= 0.7; 
+
+                this.vx = (dx / dist) * this.speed;
+                this.vy = (dy / dist) * this.speed;
+                
+                this.size = this.type === 'normal' ? 3 : 
+                            this.type === 'gold' ? 5 : 
+                            this.type === 'constellation' ? 6 : 8;
+                
+                this.color = this.type === 'normal' ? '#ffffff' : 
+                             this.type === 'gold' ? '#f7dc6f' : 
+                             this.type === 'constellation' ? '#bb8fce' : '#85c1e9';
+                this.active = true;
+                this.history = [];
+            }
+            update() {
+                if(!this.active) return;
+
+                if(!gameState.skyActive && gameState.phase === 'interactive') return;
+
+                if(this.isSpecialLoop) {
+                    this.angle += this.loopSpeed;
+                    this.x = canvas.width/2 + Math.cos(this.angle) * this.radiusX;
+                    this.y = canvas.height/2 + Math.sin(this.angle) * this.radiusY;
+                    this.history.push({x: this.x, y: this.y});
+                    if(this.history.length > 20) this.history.shift();
+                    return;
+                }
+
+                this.history.push({x: this.x, y: this.y});
+                if(this.history.length > 15) this.history.shift();
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (gameState.phase === 'interactive' && 
+                    this.y >= basket.y - 10 && this.y <= basket.y + basket.height &&
+                    this.x >= basket.x - basket.width/2 && this.x <= basket.x + basket.width/2) {
+                    
+                    this.active = false;
+                    audio.starCatch();
+                    createBurst(this.x, this.y, this.color);
+                    triggerWishPresentation(this.type);
+                    return;
+                }
+
+                if(this.y > canvas.height + 30 || this.x < -30 || this.x > canvas.width + 30) {
+                    if(gameState.phase === 'interactive') {
+                        this.reset(); 
+                    } else {
+                        this.active = false;
+                    }
+                }
+            }
+            draw() {
+                if(!this.active) return;
+                
+                if(this.history.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.history[0].x, this.history[0].y);
+                    for(let i=1; i<this.history.length; i++) {
+                        ctx.lineTo(this.history[i].x, this.history[i].y);
+                    }
+                    let gradient = ctx.createLinearGradient(this.history[0].x, this.history[0].y, this.x, this.y);
+                    gradient.addColorStop(0, 'transparent');
+                    gradient.addColorStop(1, this.color);
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = this.size / 2;
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0; 
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, tx = null, ty = null, callback = null) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 3 + 1;
+                this.alpha = 1;
+                
+                if(tx !== null && ty !== null) {
+                    this.mode = 'target';
+                    this.tx = tx;
+                    this.ty = ty;
+                    let dx = tx - x;
+                    let dy = ty - y;
+                    let d = Math.sqrt(dx*dx + dy*dy);
+                    let spd = 5 + Math.random() * 5;
+                    this.vx = (dx/d)*spd;
+                    this.vy = (dy/d)*spd;
+                    this.callback = callback;
+                } else {
+                    this.mode = 'burst';
+                    let angle = Math.random() * Math.PI * 2;
+                    let spd = Math.random() * 4 + 1;
+                    this.vx = Math.cos(angle) * spd;
+                    this.vy = Math.sin(angle) * spd;
+                    this.decay = 0.01 + Math.random() * 0.02;
+                }
+            }
+            update() {
+                if(this.mode === 'burst') {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.alpha -= this.decay;
+                } else {
+                    let dx = this.tx - this.x;
+                    let dy = this.ty - this.y;
+                    let d = Math.sqrt(dx*dx + dy*dy);
+                    if(d < 10) {
+                        this.alpha = 0;
+                        if(this.callback) { this.callback(); this.callback = null; }
+                    } else {
+                        this.x += this.vx;
+                        this.y += this.vy;
+                    }
+                }
+            }
+            draw() {
+                if(this.alpha <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createBurst(x, y, color) {
+            for(let i=0; i<30; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function drawBasket() {
+            if(gameState.phase !== 'interactive') return;
+            
+            basket.x += (basket.targetX - basket.x) * 0.15;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 1.5;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(232, 218, 239, 0.4)';
+            
+            ctx.beginPath();
+            ctx.roundRect(basket.x - basket.width/2, basket.y, basket.width, basket.height, [0, 0, 15, 15]);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(247, 220, 111, 0.3)';
+            ctx.moveTo(basket.x - basket.width/2 + 10, basket.y + 4);
+            ctx.lineTo(basket.x + basket.width/2 - 10, basket.y + 4);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function handleMove(clientX) {
+            if(gameState.phase === 'interactive') {
+                basket.targetX = Math.max(basket.width/2, Math.min(canvas.width - basket.width/2, clientX));
+            }
+        }
+
+        window.addEventListener('mousemove', (e) => handleMove(e.clientX));
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length > 0) handleMove(e.touches[0].clientX);
+        }, { passive: true });
+
+        function spawnFireflies() {
+            if(fireflies.length < 25) {
+                fireflies.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height - Math.random() * 200,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    opacity: Math.random(),
+                    pulseSpeed: 0.02 + Math.random()*0.03
+                });
+            }
+        }
+
+        let constellationStars = [];
+        function buildConstellationCoordinates() {
+            constellationStars = [];
+            const w = canvas.width;
+            const h = canvas.height;
+            const centerX = w / 2;
+            const centerY = h / 2 - 40;
+
+            const relativePoints = [
+                {rx: -160, ry: 40}, {rx: -160, ry: -40}, {rx: -120, ry: 40}, {rx: -120, ry: -40},
+                {rx: -80, ry: 40}, {rx: -60, ry: -40}, {rx: -40, ry: 40}, {rx: -70, ry: 5}, {rx: -50, ry: 5},
+                {rx: -20, ry: -40}, {rx: 0, ry: 40}, {rx: 20, ry: -40},
+                {rx: 40, ry: -40}, {rx: 60, ry: 0}, {rx: 80, ry: -40}, {rx: 60, ry: 40},
+                {rx: 100, ry: 40}, {rx: 120, ry: -40}, {rx: 140, ry: 40}, {rx: 110, ry: 5}, {rx: 130, ry: 5}
+            ];
+
+            relativePoints.forEach(p => {
+                constellationStars.push({
+                    x: centerX + p.rx,
+                    y: centerY + p.ry,
+                    curX: Math.random() * w,
+                    curY: Math.random() * h,
+                    size: 3,
+                    alpha: 0
+                });
+            });
+
+            constellationLines = [
+                [0,1], [1,2], [2,3], 
+                [4,5], [5,6], [7,8], 
+                [9,10], [10,11],     
+                [12,13], [14,13], [13,15], 
+                [16,17], [17,18], [19,20]  
+            ];
+        }
+
+        let heartStars = [];
+        function buildHeartCoordinates() {
+            heartStars = [];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2 - 40;
+            
+            for(let t = 0; t < Math.PI * 2; t += 0.25) {
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                heartStars.push({
+                    x: centerX + x * 15,
+                    y: centerY - y * 15, 
+                    curX: centerX + x * 2,
+                    curY: centerY - y * 2,
+                    alpha: 0
+                });
+            }
+        }
+
+        function tick() {
+            ctx.fillStyle = 'rgba(3, 3, 19, 0.25)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            stars.forEach(s => {
+                s.opacity += s.speed;
+                if(s.opacity > 1 || s.opacity < 0) s.speed = -s.speed;
+                ctx.fillStyle = s.color;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0.1, s.opacity);
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+                ctx.restore();
+            });
+
+            if(gameState.wishesCollectedCount >= 25) {
+                spawnFireflies();
+                fireflies.forEach(f => {
+                    f.x += f.vx + Math.sin(Date.now()*0.001)*0.1;
+                    f.y += f.vy;
+                    f.opacity += f.pulseSpeed;
+                    if(f.opacity > 1 || f.opacity < 0) f.pulseSpeed = -f.pulseSpeed;
+                    if(f.y < 0) f.y = canvas.height;
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0.1, f.opacity);
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, 2, 0, Math.PI*2);
+                    ctx.fillStyle = '#f7dc6f';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#f7dc6f';
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            drawBasket();
+
+            shootingStars.forEach(ss => {
+                ss.update();
+                ss.draw();
+            });
+
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+                if(p.alpha <= 0) particles.splice(index, 1);
+            });
+
+            if(gameState.phase === 'finale') {
+                constellationStars.forEach(cs => {
+                    cs.curX += (cs.x - cs.curX) * 0.04;
+                    cs.curY += (cs.y - cs.curY) * 0.04;
+                    if(cs.alpha < 1) cs.alpha += 0.01;
+
+                    ctx.save();
+                    ctx.globalAlpha = cs.alpha;
+                    ctx.beginPath();
+                    ctx.arc(cs.curX, cs.curY, cs.size, 0, Math.PI*2);
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#fff';
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.lineWidth = 1;
+                constellationLines.forEach(line => {
+                    let p1 = constellationStars[line[0]];
+                    let p2 = constellationStars[line[1]];
+                    if(p1 && p2 && p1.alpha > 0.5) {
+                        ctx.beginPath();
+                        ctx.moveTo(p1.curX, p1.curY);
+                        ctx.lineTo(p2.curX, p2.curY);
+                        ctx.stroke();
+                    }
+                });
+                ctx.restore();
+            }
+
+            if(gameState.navyaHeartFormed) {
+                heartStars.forEach(hs => {
+                    hs.curX += (hs.x - hs.curX) * 0.05;
+                    hs.curY += (hs.y - hs.curY) * 0.05;
+                    if(hs.alpha < 1) hs.alpha += 0.02;
+
+                    ctx.save();
+                    ctx.globalAlpha = hs.alpha;
+                    ctx.beginPath();
+                    ctx.arc(hs.curX, hs.curY, 2.5, 0, Math.PI*2);
+                    ctx.fillStyle = '#ff8bb0';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#ff8bb0';
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function attemptTriggerSecretMoment() {
+            if(Math.random() < 0.15) { 
+                let toast = document.getElementById('secret-toast');
+                toast.style.opacity = '1';
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                }, 4000);
+            }
+        }
+
+        function triggerWishPresentation(starType) {
+            gameState.skyActive = false; 
+            
+            let availableWishes = WISH_DATABASE.filter(w => !collectedWishIDs.has(w.id));
+            if(availableWishes.length === 0) {
+                collectedWishIDs.clear(); 
+                availableWishes = WISH_DATABASE;
+            }
+
+            let targetPool = availableWishes.filter(w => w.type === starType);
+            if(targetPool.length === 0) targetPool = availableWishes;
+            
+            currentWishContext = targetPool[Math.floor(Math.random() * targetPool.length)];
+            collectedWishIDs.add(currentWishContext.id);
+
+            document.getElementById('card-cat').innerText = currentWishContext.category + " Star";
+            document.getElementById('card-cat').style.color = 
+                starType === 'gold' ? 'var(--c-gold)' : 
+                starType === 'constellation' ? '#bb8fce' : 
+                starType === 'moon' ? '#5dade2' : 'var(--c-soft-gold)';
+
+            let wishTextEl = document.getElementById('card-text');
+            wishTextEl.innerText = "";
+            
+            document.getElementById('wish-overlay').classList.add('active');
+            
+            let words = currentWishContext.text.split(" ");
+            let i = 0;
+            function typeWord() {
+                if(i < words.length && document.getElementById('wish-overlay').classList.contains('active')) {
+                    wishTextEl.innerText += (i === 0 ? "" : " ") + words[i];
+                    i++;
+                    setTimeout(typeWord, 60);
+                }
+            }
+            setTimeout(typeWord, 300);
+            
+            attemptTriggerSecretMoment();
+        }
+
+        document.getElementById('collect-wish-btn').addEventListener('click', () => {
+            document.getElementById('wish-overlay').classList.remove('active');
+            audio.collectSparkle();
+
+            let cardRect = document.querySelector('.wish-card').getBoundingClientRect();
+            let startX = cardRect.left + cardRect.width/2;
+            let startY = cardRect.top + cardRect.height/2;
+
+            let jarRect = document.getElementById('jar-container').getBoundingClientRect();
+            let targetX = jarRect.left + jarRect.width/2;
+            let targetY = jarRect.top + jarRect.height/2;
+
+            let color = currentWishContext.type === 'gold' ? '#f7dc6f' : '#fff';
+
+            for(let p=0; p<20; p++) {
+                particles.push(new Particle(startX + (Math.random()-0.5)*100, startY + (Math.random()-0.5)*100, color, targetX, targetY));
+            }
+
+            updateWishesCount();
+
+            gameState.skyActive = true;
+            maintainSkyStarPopulation();
+        });
+
+        function updateWishesCount() {
+            gameState.wishesCollectedCount++;
+            
+            let formatCount = String(gameState.wishesCollectedCount).padStart(3, '0');
+            document.getElementById('jar-counter-text').innerText = `${formatCount} / 006`;
+
+            adjustEnvironmentEvolution();
+
+            let intensity = Math.min(1, gameState.wishesCollectedCount / 6);
+            let glowCore = document.getElementById('jar-glow');
+            glowCore.style.opacity = 0.2 + (intensity * 0.8);
+            glowCore.style.transform = `translate(-50%, -50%) scale(${1 + intensity * 0.5})`;
+
+            if(gameState.wishesCollectedCount >= 6) {
+                gameState.skyActive = false;
+                shootingStars = [];
+                
+                setTimeout(() => {
+                    let jarContainer = document.getElementById('jar-container');
+                    if(jarContainer) jarContainer.style.opacity = '0';
+                    transitionToCountdownDashboard();
+                }, 1000);
+            }
+        }
+
+        function maintainSkyStarPopulation() {
+            if(!gameState.skyActive) return;
+            if(gameState.wishesCollectedCount >= 6) return;
+            
+            shootingStars = shootingStars.filter(s => s.active);
+
+            let targetCount = 1; 
+            while(shootingStars.length < targetCount) {
+                let rng = Math.random();
+                let type = 'normal';
+                if(rng > 0.95) type = 'moon';
+                else if(rng > 0.88) type = 'constellation';
+                else if(rng > 0.75) type = 'gold';
+
+                shootingStars.push(new ShootingStar(type));
+            }
+        }
+        setInterval(maintainSkyStarPopulation, 1500);
+
+        function adjustEnvironmentEvolution() {
+            const count = gameState.wishesCollectedCount;
+            
+            if(count >= 2 && stars.length < 180) {
+                for(let i=0; i<30; i++) stars.push({
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                    size: Math.random() * 1.2, opacity: Math.random(), speed: 0.01, color: '#e8daef'
+                });
+            }
+            if(count >= 3) {
+                document.getElementById('hud').style.textShadow = '0 0 10px rgba(255,255,255,0.4)';
+            }
+            if(count >= 4) {
+                document.getElementById('aurora-layer').style.opacity = '1';
+            }
+            if(count >= 5) {
+                document.getElementById('galaxy-layer').style.opacity = '1';
+            }
+        }
+
+        const introTextLines = [
+            "Every night...",
+            "Thousands of wishes travel across the sky.",
+            "Some disappear forever.",
+            "Some wait...",
+            "for the right person.",
+            "Tonight...",
+            "they're waiting for you.",
+            "Navya.",
+            "Catch your first wish."
+        ];
+
+        function playIntroSequence() {
+            let storyContainer = document.getElementById('intro-story');
+            let lineIndex = 0;
+
+            function renderNextLine() {
+                if(lineIndex < introTextLines.length) {
+                    storyContainer.innerHTML = ""; 
+                    let lineEl = document.createElement('div');
+                    lineEl.className = 'story-line';
+                    if(introTextLines[lineIndex] === "Navya.") {
+                        lineEl.className += ' highlight';
+                    }
+                    lineEl.innerText = introTextLines[lineIndex];
+                    storyContainer.appendChild(lineEl);
+
+                    setTimeout(() => { lineEl.style.opacity = '1'; }, 100);
+
+                    if(lineIndex === 7) {
+                        setTimeout(() => { audio.playTone(440, 'sine', 2.0, 0.15); }, 200);
+                    } else {
+                        setTimeout(() => { audio.ambientChime(); }, 150);
+                    }
+
+                    let holdTime = introTextLines[lineIndex] === "Navya." ? 3500 : 2500;
+
+                    setTimeout(() => {
+                        lineEl.style.opacity = '0';
+                        setTimeout(() => {
+                            lineIndex++;
+                            renderNextLine();
+                        }, 1500);
+                    }, holdTime);
+                } else {
+                    document.getElementById('intro-btn').classList.add('visible');
+                    shootingStars.push(new ShootingStar('normal'));
+                }
+            }
+            setTimeout(renderNextLine, 1000);
+        }
+
+        document.getElementById('intro-btn').addEventListener('click', () => {
+            document.getElementById('intro-scene').classList.remove('active');
+            document.getElementById('gameplay-scene').classList.add('active');
+            document.getElementById('hud').classList.add('visible');
+            document.getElementById('jar-container').classList.add('visible');
+            
+            gameState.phase = 'interactive';
+            gameState.skyActive = true;
+            
+            maintainSkyStarPopulation();
+            
+            setTimeout(() => {
+                let hint = document.getElementById('interaction-hint');
+                if(hint) hint.style.opacity = '0';
+            }, 7000);
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if(gameState.phase !== 'finale' || shootingStars.length === 0) return;
+            
+            let fs = shootingStars[0];
+            let dx = e.clientX - fs.x;
+            let dy = e.clientY - fs.y;
+            if(Math.sqrt(dx*dx + dy*dy) < 70) {
+                shootingStars = [];
+                audio.starCatch();
+                createBurst(fs.x, fs.y, '#f7dc6f');
+                renderLastWishCard();
+            }
+        });
+
+        function renderLastWishCard() {
+            document.getElementById('card-cat').innerText = "THE LAST WISH";
+            document.getElementById('card-cat').style.color = "var(--c-gold)";
+            
+            let wishTextEl = document.getElementById('card-text');
+            wishTextEl.innerText = "";
+            
+            let lastWishStatement = "You spent all this time collecting wishes. Maybe they were meant for you. Maybe they weren't. But one thing is certain... Someone somewhere quietly wishes for your happiness. Not only today. Not only tomorrow. But every single day. And perhaps... that's the most beautiful wish of all.";
+            
+            document.getElementById('wish-overlay').classList.add('active');
+            
+            let words = lastWishStatement.split(" ");
+            let i = 0;
+            function typeLastWish() {
+                if(i < words.length && document.getElementById('wish-overlay').classList.contains('active')) {
+                    wishTextEl.innerText += (i === 0 ? "" : " ") + words[i];
+                    i++;
+                    setTimeout(typeLastWish, 70);
+                }
+            }
+            setTimeout(typeLastWish, 400);
+
+            let collectBtn = document.getElementById('collect-wish-btn');
+            collectBtn.innerText = "Close";
+            
+            collectBtn.onclick = () => {
+                document.getElementById('wish-overlay').classList.remove('active');
+                transitionToCountdownDashboard();
+            };
+        }
+
+        function transitionToCountdownDashboard() {
+            gameState.phase = 'finalCard';
+            document.getElementById('gameplay-scene').classList.remove('active');
+            document.getElementById('hud').classList.remove('visible');
+            
+            document.getElementById('final-scene').classList.add('active');
+            setTimeout(() => {
+                document.getElementById('countdown-card').classList.add('reveal');
+            }, 300);
+
+            initializeLiveCountdownEngine();
+        }
+
+        // Target Date is calculated systematically relative to the current active timeline session dynamically
+        function initializeLiveCountdownEngine() {
+            let targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + 3);
+            targetDate.setHours(0,0,0,0); 
+
+            function updateTimerMetrics() {
+                let now = new Date().getTime();
+                let diff = targetDate.getTime() - now;
+
+                if (diff <= 0) {
+                    document.getElementById('days').innerText = "00";
+                    document.getElementById('hours').innerText = "00";
+                    document.getElementById('minutes').innerText = "00";
+                    document.getElementById('seconds').innerText = "00";
+                    return;
+                }
+
+                let d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                let h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                let s = Math.floor((diff % (1000 * 60)) / 1000);
+
+                document.getElementById('days').innerText = String(d).padStart(2, '0');
+                document.getElementById('hours').innerText = String(h).padStart(2, '0');
+                document.getElementById('minutes').innerText = String(m).padStart(2, '0');
+                document.getElementById('seconds').innerText = String(s).padStart(2, '0');
+            }
+            
+            updateTimerMetrics();
+            setInterval(updateTimerMetrics, 1000);
+        }
+
+        document.getElementById('release-wishes-btn').addEventListener('click', () => {
+            document.getElementById('countdown-card').classList.remove('reveal');
+            
+            audio.playEmotionalOutpour();
+            buildHeartCoordinates();
+            gameState.navyaHeartFormed = true;
+
+            setTimeout(() => {
+                gameState.navyaHeartFormed = false;
+                constellationStars = [];
+                constellationLines = [];
+                
+                gameState.phase = 'interactive';
+                gameState.wishesCollectedCount = 0;
+                collectedWishIDs.clear();
+                
+                let jarContainer = document.getElementById('jar-container');
+                jarContainer.style.transform = "none";
+                jarContainer.style.opacity = "1";
+                document.getElementById('jar-counter-text').innerText = "000 / 006";
+                document.getElementById('jar-glow').style.opacity = '0.2';
+                document.getElementById('jar-glow').style.transform = 'translate(-50%, -50%) scale(1)';
+
+                document.getElementById('final-scene').classList.remove('active');
+                document.getElementById('gameplay-scene').classList.add('active');
+                document.getElementById('hud').classList.add('visible');
+                
+                let collectBtn = document.getElementById('collect-wish-btn');
+                collectBtn.innerText = "Collect Wish";
+                collectBtn.onclick = null; 
+
+                gameState.skyActive = true;
+                maintainSkyStarPopulation();
+
+            }, 7000);
+        });
+
+        window.onload = () => {
+            resizeCanvas();
+            playIntroSequence();
+            requestAnimationFrame(tick);
+        };
+    </script>
+</body>
+</html>
